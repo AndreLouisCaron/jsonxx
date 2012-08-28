@@ -213,6 +213,95 @@ namespace json {
     };
 
     /*!
+     * @brief Parser, placeholder for document root object.
+     *
+     * @note Instances of this class must outlive the lifetime of @c Any, @c
+     *  List and @c Map objects extracted from it.
+     */
+    class Document
+    {
+        /* class methods. */
+    private:
+        /*!
+         * @internal
+         * @brief Parse the JSON document in @a text.
+         * @param text Serialized JSON document.
+         * @return A handle to the JSON data structure.
+         */
+        static ::cJSON * parse (const std::string& text)
+        {
+            ::cJSON *const root = ::cJSON_Parse(text.c_str());
+            if (root == 0) {
+                // cJSON_GetErrorPtr()
+                throw (std::exception());
+            }
+            return (root);
+        }
+
+        /* data. */
+    private:
+        ::cJSON *const myData;
+
+        /* construction. */
+    public:
+        /*!
+         * @brief Parse the JSON document in @a text.
+         * @param text Serialized JSON document.
+         */
+        explicit Document (const std::string& text)
+            : myData(parse(text.c_str()))
+        {}
+
+    private:
+        Document (const Document&);
+
+    public:
+        /*!
+         * @brief Release the memory held by the underlying data structure.
+         */
+        ~Document () {
+            ::cJSON_Delete(myData);
+        }
+
+        /* methods. */
+    public:
+        /*!
+         * @internal
+         * @brief Access the underlying implementation.
+         * @return Handle to the JSON data structure.
+         *
+         * @note The data may be a list or a map.
+         */
+        ::cJSON * data () const {
+            return (myData);
+        }
+
+        /*!
+         * @brief Checks if the root object is a list.
+         *
+         * @see is_map()
+         * @see List(Document&)
+         */
+        bool is_list () const {
+            return (myData->type == cJSON_Array);
+        }
+
+        /*!
+         * @brief Checks if the root object is a map.
+         *
+         * @see is_list()
+         * @see Map(Document&)
+         */
+        bool is_map () const {
+            return (myData->type == cJSON_Object);
+        }
+
+        /* operators. */
+    private:
+        Document& operator= (const Document&);
+    };
+
+    /*!
      * @brief Ordered group of values.
      *
      * @note Instances of this class must be entirely scoped within the
@@ -236,6 +325,23 @@ namespace json {
          */
         explicit List (::cJSON * data)
             : myData(data)
+        {
+            if (myData->type != cJSON_Array) {
+                throw (std::bad_cast());
+            }
+        }
+
+        /*!
+         * @brief Extract the root object of @a document as a list.
+         * @param document Document who'se root object we're interested in.
+         *
+         * @pre The document's root object is a list.
+         * @throw std::bad_cast @a document's root object is not a list.
+         *
+         * @see Map(Document&)
+         */
+        explicit List (Document& document)
+            : myData(document.data())
         {
             if (myData->type != cJSON_Array) {
                 throw (std::bad_cast());
@@ -332,6 +438,23 @@ namespace json {
         }
 
         /*!
+         * @brief Extract the root object of @a document as a map.
+         * @param document Document who'se root object we're interested in.
+         *
+         * @pre The document's root object is a map.
+         * @throw std::bad_cast @a document's root object is not a map.
+         *
+         * @see Map(Document&)
+         */
+        explicit Map (Document& document)
+            : myData(document.data())
+        {
+            if (myData->type != cJSON_Object) {
+                throw (std::bad_cast());
+            }
+        }
+
+        /*!
          * @brief Converts from a dynamically typed value.
          * @param object Value to interpret as a @c Map.
          *
@@ -377,51 +500,6 @@ namespace json {
                 throw (std::exception());
             }
             return (Any(item));
-        }
-    };
-
-    /*!
-     * @brief Parser, placeholder for document root object.
-     *
-     * @note Instances of this class must outlive the lifetime of @c Any, @c
-     *  List and @c Map objects extracted from it.
-     */
-    class Document :
-        public Map
-    {
-        /* class methods. */
-    private:
-        /*!
-         * @internal
-         * @brief Parse the JSON document in @a text.
-         * @param text Serialized JSON document.
-         * @return A handle to the JSON data structure.
-         */
-        static ::cJSON * parse (const std::string& text)
-        {
-            ::cJSON *const root = ::cJSON_Parse(text.c_str());
-            if (root == 0) {
-                // cJSON_GetErrorPtr()
-                throw (std::exception());
-            }
-            return (root);
-        }
-
-        /* construction. */
-    public:
-        /*!
-         * @brief Parse the JSON document in @a text.
-         * @param text Serialized JSON document.
-         */
-        explicit Document (const std::string& text)
-            : Map(parse(text.c_str()))
-        {}
-
-        /*!
-         * @brief Release the memory held by the underlying data structure.
-         */
-        ~Document () {
-            ::cJSON_Delete(data());
         }
     };
 
